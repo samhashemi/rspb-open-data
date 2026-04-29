@@ -1,11 +1,12 @@
 // Felt JS SDK integration. The map iframe is in HTML so it starts loading at
-// parse time. We then attach the SDK to it via Felt.connect.
+// parse time, and we attach the SDK to it on a separate track.
 //
-// Why connectWithRetry: the SDK's connect uses a hard-coded 5 second timeout
-// for the felt.ready handshake, which is fine on a warm cache but blows past
-// on a cold one (Felt's iframe app is ~4MB of bundles). Each connect attempt
-// creates a fresh MessageChannel and first post, so retrying simply gives
-// more chances to catch the iframe in a responsive state.
+// We do NOT use Felt.connect's built-in handshake: it leaks DataCloneErrors
+// (its setInterval re-transfers the same MessageChannel port every 100ms,
+// throwing on every retry after the first) and has a hard-coded 5s timeout
+// that's tight on a cold cache. Instead, we run our own handshake — one
+// fresh port per attempt, retry every 500ms — then ask the SDK for the
+// controller via the `skipReadyCheck` escape hatch.
 import { Felt } from "https://esm.sh/@feltmaps/js-sdk";
 
 const iframeEl  = document.getElementById("felt-map");
@@ -17,7 +18,8 @@ let layers = []; // [{ id, name, lower }]
 
 (async function init() {
   try {
-    felt = await connectWithRetry(iframeEl.contentWindow, 45_000);
+    await awaitFeltReady(iframeEl.contentWindow);
+    felt = await Felt.connect(iframeEl.contentWindow, { skipReadyCheck: true });
   } catch (err) {
     showSdkUnavailable(err);
     return;
@@ -32,23 +34,47 @@ let layers = []; // [{ id, name, lower }]
   document.addEventListener("click", onDocClick, true);
 })();
 
-async function connectWithRetry(win, totalMs) {
-  const deadline = Date.now() + totalMs;
-  let lastErr;
-  let attempt = 0;
-  while (Date.now() < deadline) {
-    attempt++;
-    try {
-      return await Felt.connect(win);
-    } catch (e) {
-      lastErr = e;
-      // Quiet the per-attempt failure unless someone's looking — the SDK's
-      // setInterval already pollutes the console with DataCloneError noise.
-      if (attempt === 1) console.warn("Felt.connect retrying:", e?.message || e);
-      await new Promise((r) => setTimeout(r, 250));
+// Custom felt.ready handshake — replaces Felt.connect's broken setInterval.
+// Each retry uses a fresh MessageChannel, so port2 is never re-transferred
+// (the SDK's bug) and no DataCloneError is thrown.
+function awaitFeltReady(win, deadlineMs = 60_000) {
+  return new Promise((resolve, reject) => {
+    let done = false;
+    let currentPort1 = null;
+    let attemptTimer = null;
+
+    const giveUp = setTimeout(() => {
+      if (done) return;
+      done = true;
+      clearTimeout(attemptTimer);
+      currentPort1?.close();
+      reject(new Error(`Felt iframe did not report felt.ready within ${deadlineMs}ms`));
+    }, deadlineMs);
+
+    function attempt() {
+      if (done) return;
+      currentPort1?.close();
+      const ch = new MessageChannel();
+      currentPort1 = ch.port1;
+      ch.port1.onmessage = (e) => {
+        if (done || e.data !== true) return;
+        done = true;
+        clearTimeout(giveUp);
+        clearTimeout(attemptTimer);
+        ch.port1.close();
+        resolve();
+      };
+      try {
+        win.postMessage({ type: "felt.ready" }, "*", [ch.port2]);
+      } catch (e) {
+        // Should never happen with a fresh port — log just in case.
+        console.warn("felt.ready postMessage threw:", e);
+      }
+      attemptTimer = setTimeout(attempt, 500);
     }
-  }
-  throw lastErr;
+
+    attempt();
+  });
 }
 
 function showSdkUnavailable(err) {
