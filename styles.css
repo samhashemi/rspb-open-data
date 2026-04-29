@@ -144,11 +144,14 @@ h2 { font-size: 1.6rem; letter-spacing: -0.005em; }
 .map-host { width: 100%; height: 100%; }
 .map-host iframe { width: 100%; height: 100%; border: 0; display: block; }
 .map-placeholder {
+  /* Transparent overlay so the iframe is visible underneath as it paints —
+     we don't want to block the map render on the SDK handshake completing. */
   position: absolute; inset: 0;
-  display: grid; place-items: center;
-  color: var(--teal-dark); font-size: .95rem;
-  background: linear-gradient(180deg, #e9f1f3 0%, #d3e4e8 100%);
+  display: grid; place-items: end center;
+  padding-bottom: 16px;
+  color: var(--teal-dark); font-size: .85rem;
   pointer-events: none;
+  text-shadow: 0 1px 2px rgba(255,255,255,.7);
 }
 
 /* ---------- Strip ---------- */
