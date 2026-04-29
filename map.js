@@ -11,10 +11,10 @@ let felt = null;
 let layers = []; // [{ id, name, lower }]
 
 (async function init() {
-  // Wait for the iframe to actually load before handshaking — otherwise
-  // contentWindow exists but Felt's runtime hasn't set up its message listener.
-  await iframeReady(iframeEl);
-
+  // Felt.connect polls felt.ready via postMessage on a 100ms interval up to
+  // 5s, so it handles the "iframe still loading" case itself — no need to
+  // wait for a `load` event (which may already have fired by the time this
+  // module evaluates, leaving us listening for an event that never comes).
   try {
     felt = await Felt.connect(iframeEl.contentWindow);
   } catch (err) {
@@ -30,18 +30,6 @@ let layers = []; // [{ id, name, lower }]
   searchEl.addEventListener("search", onSearchInput);
   document.addEventListener("click", onDocClick, true);
 })();
-
-function iframeReady(iframe) {
-  // Same-origin readyState check would throw cross-origin, so trust `load`.
-  return new Promise((resolve) => {
-    if (iframe.dataset.loaded === "1") return resolve();
-    iframe.addEventListener(
-      "load",
-      () => { iframe.dataset.loaded = "1"; resolve(); },
-      { once: true }
-    );
-  });
-}
 
 function showSdkUnavailable(err) {
   const msg = (err && err.message) || String(err || "unknown error");
