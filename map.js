@@ -11,10 +11,14 @@ let felt = null;
 let layers = []; // [{ id, name, lower }]
 
 (async function init() {
-  // Felt.connect polls felt.ready via postMessage on a 100ms interval up to
-  // 5s, so it handles the "iframe still loading" case itself — no need to
-  // wait for a `load` event (which may already have fired by the time this
-  // module evaluates, leaving us listening for an event that never comes).
+  // Felt.connect creates a MessageChannel and transfers port2 on the first
+  // postMessage; its retry interval re-transfers the *same* port, which throws
+  // DataCloneError every 100ms. So the first post must arrive after Felt's
+  // listener is up — i.e. after the iframe finishes loading. The iframe's
+  // inline `onload` sets data-loaded so we can detect "already loaded" if the
+  // event fired before this module finished evaluating.
+  await iframeLoaded(iframeEl);
+
   try {
     felt = await Felt.connect(iframeEl.contentWindow);
   } catch (err) {
@@ -30,6 +34,17 @@ let layers = []; // [{ id, name, lower }]
   searchEl.addEventListener("search", onSearchInput);
   document.addEventListener("click", onDocClick, true);
 })();
+
+function iframeLoaded(iframe) {
+  return new Promise((resolve) => {
+    if (iframe.dataset.loaded === "1") return resolve();
+    iframe.addEventListener(
+      "load",
+      () => { iframe.dataset.loaded = "1"; resolve(); },
+      { once: true }
+    );
+  });
+}
 
 function showSdkUnavailable(err) {
   const msg = (err && err.message) || String(err || "unknown error");

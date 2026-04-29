@@ -70,7 +70,7 @@
         allowfullscreen
         loading="eager"
         referrerpolicy="strict-origin-when-cross-origin"
-        onload="document.getElementById('map-placeholder')?.remove()"
+        onload="this.dataset.loaded='1';document.getElementById('map-placeholder')?.remove()"
       ></iframe>
       <div id="map-placeholder" class="map-placeholder">Loading map…</div>
     </div>
