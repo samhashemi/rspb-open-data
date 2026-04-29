@@ -6,6 +6,8 @@
 <title>RSPB Open Data</title>
 <meta name="description" content="Open geospatial data published by the RSPB — reserves, IBAs, sensitivity maps and seabird tracking." />
 <link rel="preconnect" href="https://felt.com" />
+<link rel="preconnect" href="https://esm.sh" crossorigin />
+<link rel="modulepreload" href="https://esm.sh/@feltmaps/js-sdk" />
 <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -59,7 +61,17 @@
     </div>
 
     <div class="map-frame">
-      <div id="map-container" class="map-host" aria-label="Interactive Felt map"></div>
+      <iframe
+        id="felt-map"
+        class="map-host"
+        title="RSPB datasets — Felt map"
+        src="https://felt.com/embed/map/Untitled-Map-7zqZhIfyRZCV27rMShPpsD?loc=56.106,-2.74,5.77z"
+        allow="fullscreen; clipboard-read; clipboard-write; geolocation"
+        allowfullscreen
+        loading="eager"
+        referrerpolicy="strict-origin-when-cross-origin"
+        onload="document.getElementById('map-placeholder')?.remove()"
+      ></iframe>
       <div id="map-placeholder" class="map-placeholder">Loading map…</div>
     </div>
   </section>

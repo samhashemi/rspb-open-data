@@ -1,44 +1,26 @@
-// Felt JS SDK integration: embeds the map and wires the top search bar to
-// search layers, isolate the chosen one, and fit the viewport to its extent.
+// Felt JS SDK integration: connects to the iframe that's already loading from
+// HTML (so map paint isn't blocked on this module), then wires the top search
+// bar to search layers, isolate the chosen one, and zoom to its extent.
 import { Felt } from "https://esm.sh/@feltmaps/js-sdk";
 
-// The SDK accepts either the slugged URL form or the bare alphanumeric id.
-const MAP_ID_FULL = "Untitled-Map-7zqZhIfyRZCV27rMShPpsD";
-const MAP_ID_BARE = "7zqZhIfyRZCV27rMShPpsD";
-const INITIAL_VIEWPORT = {
-  center: { latitude: 56.106, longitude: -2.74 },
-  zoom: 5.77,
-};
-
-const container   = document.getElementById("map-container");
-const placeholder = document.getElementById("map-placeholder");
-const searchEl    = document.getElementById("q");
-const resultsEl   = document.getElementById("search-results");
+const iframeEl  = document.getElementById("felt-map");
+const searchEl  = document.getElementById("q");
+const resultsEl = document.getElementById("search-results");
 
 let felt = null;
 let layers = []; // [{ id, name, lower }]
 
 (async function init() {
-  // Try the full slug first, fall back to the bare id.
-  let lastErr = null;
-  for (const id of [MAP_ID_FULL, MAP_ID_BARE]) {
-    try {
-      felt = await Felt.embed(container, id, { initialViewport: INITIAL_VIEWPORT });
-      lastErr = null;
-      break;
-    } catch (err) {
-      lastErr = err;
-      console.warn(`Felt.embed("${id}") failed:`, err);
-      // Clear anything the SDK left behind before retrying.
-      container.innerHTML = "";
-    }
-  }
+  // Wait for the iframe to actually load before handshaking — otherwise
+  // contentWindow exists but Felt's runtime hasn't set up its message listener.
+  await iframeReady(iframeEl);
 
-  if (!felt) {
-    showSdkUnavailable(lastErr);
+  try {
+    felt = await Felt.connect(iframeEl.contentWindow);
+  } catch (err) {
+    showSdkUnavailable(err);
     return;
   }
-  if (placeholder) placeholder.remove();
 
   await loadLayers();
   searchEl.addEventListener("input", onSearchInput);
@@ -49,24 +31,22 @@ let layers = []; // [{ id, name, lower }]
   document.addEventListener("click", onDocClick, true);
 })();
 
-// SDK couldn't connect — fall back to a plain iframe so the map at least
-// renders, and tell the user *why* search is disabled.
+function iframeReady(iframe) {
+  // Same-origin readyState check would throw cross-origin, so trust `load`.
+  return new Promise((resolve) => {
+    if (iframe.dataset.loaded === "1") return resolve();
+    iframe.addEventListener(
+      "load",
+      () => { iframe.dataset.loaded = "1"; resolve(); },
+      { once: true }
+    );
+  });
+}
+
 function showSdkUnavailable(err) {
   const msg = (err && err.message) || String(err || "unknown error");
   console.error("Felt SDK unavailable:", err);
-
-  if (placeholder) placeholder.remove();
-  container.innerHTML = "";
-  const iframe = document.createElement("iframe");
-  iframe.src =
-    `https://felt.com/embed/map/${MAP_ID_FULL}?loc=56.106,-2.74,5.77z`;
-  iframe.title = "RSPB datasets — Felt map";
-  iframe.allow = "fullscreen; clipboard-read; clipboard-write; geolocation";
-  iframe.allowFullscreen = true;
-  iframe.referrerPolicy = "strict-origin-when-cross-origin";
-  container.appendChild(iframe);
-
-  // Disable the search input and surface a hint inside the results panel.
+  // The iframe is already loaded and visible — only the search needs disabling.
   searchEl.disabled = true;
   searchEl.placeholder = "Map layer search unavailable — SDK couldn't connect";
   searchEl.title =
