@@ -1,48 +1,27 @@
-// Felt JS SDK integration: embeds the map and wires the top search bar to
-// search layers, isolate the chosen one, and fit the viewport to its extent.
+// Felt JS SDK integration. The map iframe is in HTML so it starts loading at
+// parse time. We then attach the SDK to it via Felt.connect.
 //
-// We use Felt.embed (not a static iframe + Felt.connect): the SDK's connect
-// handshake re-transfers the same MessageChannel port on its retry interval,
-// throwing DataCloneError on every retry. Felt.embed has a working timing
-// window for that single-shot handshake; trying to drive Felt.connect against
-// a pre-existing iframe doesn't (regardless of waiting for `load`).
+// Why connectWithRetry: the SDK's connect uses a hard-coded 5 second timeout
+// for the felt.ready handshake, which is fine on a warm cache but blows past
+// on a cold one (Felt's iframe app is ~4MB of bundles). Each connect attempt
+// creates a fresh MessageChannel and first post, so retrying simply gives
+// more chances to catch the iframe in a responsive state.
 import { Felt } from "https://esm.sh/@feltmaps/js-sdk";
 
-const MAP_ID_FULL = "Untitled-Map-7zqZhIfyRZCV27rMShPpsD";
-const MAP_ID_BARE = "7zqZhIfyRZCV27rMShPpsD";
-const INITIAL_VIEWPORT = {
-  center: { latitude: 56.106, longitude: -2.74 },
-  zoom: 5.77,
-};
-
-const container   = document.getElementById("map-container");
-const placeholder = document.getElementById("map-placeholder");
-const searchEl    = document.getElementById("q");
-const resultsEl   = document.getElementById("search-results");
+const iframeEl  = document.getElementById("felt-map");
+const searchEl  = document.getElementById("q");
+const resultsEl = document.getElementById("search-results");
 
 let felt = null;
 let layers = []; // [{ id, name, lower }]
 
 (async function init() {
-  // Try the full slug first, fall back to the bare id.
-  let lastErr = null;
-  for (const id of [MAP_ID_FULL, MAP_ID_BARE]) {
-    try {
-      felt = await Felt.embed(container, id, { initialViewport: INITIAL_VIEWPORT });
-      lastErr = null;
-      break;
-    } catch (err) {
-      lastErr = err;
-      console.warn(`Felt.embed("${id}") failed:`, err);
-      container.innerHTML = "";
-    }
-  }
-
-  if (!felt) {
-    showSdkUnavailable(lastErr);
+  try {
+    felt = await connectWithRetry(iframeEl.contentWindow, 45_000);
+  } catch (err) {
+    showSdkUnavailable(err);
     return;
   }
-  if (placeholder && placeholder.isConnected) placeholder.remove();
 
   await loadLayers();
   searchEl.addEventListener("input", onSearchInput);
@@ -53,21 +32,29 @@ let layers = []; // [{ id, name, lower }]
   document.addEventListener("click", onDocClick, true);
 })();
 
+async function connectWithRetry(win, totalMs) {
+  const deadline = Date.now() + totalMs;
+  let lastErr;
+  let attempt = 0;
+  while (Date.now() < deadline) {
+    attempt++;
+    try {
+      return await Felt.connect(win);
+    } catch (e) {
+      lastErr = e;
+      // Quiet the per-attempt failure unless someone's looking — the SDK's
+      // setInterval already pollutes the console with DataCloneError noise.
+      if (attempt === 1) console.warn("Felt.connect retrying:", e?.message || e);
+      await new Promise((r) => setTimeout(r, 250));
+    }
+  }
+  throw lastErr;
+}
+
 function showSdkUnavailable(err) {
   const msg = (err && err.message) || String(err || "unknown error");
   console.error("Felt SDK unavailable:", err);
-
-  if (placeholder) placeholder.remove();
-  // No iframe got created — fall back to a plain embed so the map renders.
-  container.innerHTML = "";
-  const iframe = document.createElement("iframe");
-  iframe.src = `https://felt.com/embed/map/${MAP_ID_FULL}?loc=56.106,-2.74,5.77z`;
-  iframe.title = "RSPB datasets — Felt map";
-  iframe.allow = "fullscreen; clipboard-read; clipboard-write; geolocation";
-  iframe.allowFullscreen = true;
-  iframe.referrerPolicy = "strict-origin-when-cross-origin";
-  container.appendChild(iframe);
-
+  // The iframe is already loaded and visible, only search needs disabling.
   searchEl.disabled = true;
   searchEl.placeholder = "Map layer search unavailable — SDK couldn't connect";
   searchEl.title =

@@ -61,7 +61,17 @@
     </div>
 
     <div class="map-frame">
-      <div id="map-container" class="map-host" aria-label="Interactive Felt map"></div>
+      <iframe
+        id="felt-map"
+        class="map-host"
+        title="RSPB datasets — Felt map"
+        src="https://felt.com/embed/map/Untitled-Map-7zqZhIfyRZCV27rMShPpsD?legend=1&amp;cooperativeGestures=1&amp;link=1&amp;geolocation=0&amp;zoomControls=1&amp;scaleBar=1&amp;loc=56.106,-2.74,5.77z"
+        allow="fullscreen; clipboard-read; clipboard-write; geolocation"
+        allowfullscreen
+        loading="eager"
+        referrerpolicy="strict-origin-when-cross-origin"
+        onload="document.getElementById('map-placeholder')?.remove()"
+      ></iframe>
       <div id="map-placeholder" class="map-placeholder">Loading map…</div>
     </div>
   </section>
