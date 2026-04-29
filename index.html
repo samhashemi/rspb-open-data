@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>RSPB Open Data</title>
+<meta name="description" content="Open geospatial data published by the RSPB — reserves, IBAs, sensitivity maps and seabird tracking." />
+<link rel="preconnect" href="https://felt.com" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="#top" aria-label="RSPB Open Data home">
+      <span class="brand-mark" aria-hidden="true">
+        <!-- minimal avocet-ish silhouette -->
+        <svg viewBox="0 0 64 64" width="36" height="36" role="img" aria-label="RSPB">
+          <circle cx="32" cy="32" r="32" fill="#fff"/>
+          <path d="M10 40 q10 -2 20 -10 q4 -3 8 -3 q4 0 8 3 l4 -4 l-2 8 q-6 8 -18 10 q-12 2 -20 -4 z" fill="#006681"/>
+          <circle cx="46" cy="29" r="1.5" fill="#fff"/>
+        </svg>
+      </span>
+      <span class="brand-text">
+        <strong>RSPB</strong>
+        <span>Open Data</span>
+      </span>
+    </a>
+    <nav class="nav" aria-label="Primary">
+      <a href="#datasets">Datasets</a>
+      <a href="#map">Map</a>
+      <a href="#about">About</a>
+      <a href="https://www.rspb.org.uk" target="_blank" rel="noopener">rspb.org.uk ↗</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+
+  <section class="hero" id="map">
+    <div class="hero-text wrap">
+      <p class="eyebrow">Open Data Portal</p>
+      <h1>Explore the data behind nature&rsquo;s recovery.</h1>
+      <p class="lede">
+        Reserves, Important Bird Areas, seabird tracking, sensitivity maps and more — published openly
+        for researchers, planners, journalists and citizens. Browse on the map, or jump straight to a download.
+      </p>
+      <form class="search" role="search" autocomplete="off"
+            onsubmit="event.preventDefault();">
+        <label for="q" class="visually-hidden">Search map layers</label>
+        <input id="q" type="search"
+               placeholder="Search map layers — type a name, then click to isolate &amp; zoom"
+               autocomplete="off"
+               aria-controls="search-results"
+               aria-autocomplete="list" />
+        <span class="search-icon" aria-hidden="true">⌕</span>
+        <div id="search-results" class="search-results" role="listbox" hidden></div>
+      </form>
+    </div>
+
+    <div class="map-frame">
+      <div id="map-container" class="map-host" aria-label="Interactive Felt map"></div>
+      <div id="map-placeholder" class="map-placeholder">Loading map…</div>
+    </div>
+  </section>
+
+  <section class="strip">
+    <div class="wrap strip-row">
+      <div><span class="stat">43</span><span>open datasets</span></div>
+      <div><span class="stat">10+</span><span>download formats</span></div>
+      <div><span class="stat">UK&nbsp;&amp;&nbsp;Eire</span><span>geographic coverage</span></div>
+      <div><span class="stat">CC&nbsp;BY</span><span>licensed for reuse</span></div>
+    </div>
+  </section>
+
+  <section class="datasets wrap" id="datasets">
+    <header class="section-head">
+      <h2>Datasets</h2>
+      <div class="filters" role="group" aria-label="Filter by tag">
+        <button class="chip is-active" data-tag="">All</button>
+        <button class="chip" data-tag="reserves">Reserves</button>
+        <button class="chip" data-tag="seabird">Seabirds</button>
+        <button class="chip" data-tag="wind">Wind &amp; energy</button>
+        <button class="chip" data-tag="upland">Uplands</button>
+        <button class="chip" data-tag="iba">IBAs</button>
+      </div>
+    </header>
+
+    <div id="grid" class="grid" aria-live="polite"></div>
+    <p id="empty" class="empty" hidden>No datasets match that search.</p>
+  </section>
+
+  <section class="about wrap" id="about">
+    <h2>About this portal</h2>
+    <p>
+      The RSPB publishes geospatial data to support evidence-based conservation. Data are made available under the
+      Creative Commons <em>Attribution 4.0</em> licence unless stated otherwise. This site is a community-built front
+      end backed by the RSPB&rsquo;s ArcGIS Hub catalogue; the underlying datasets, services and metadata are owned
+      and maintained by the RSPB.
+    </p>
+    <p>
+      Map tiles and rendering are provided by <a href="https://felt.com" target="_blank" rel="noopener">Felt</a>.
+    </p>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; Royal Society for the Protection of Birds. Data licensed CC&nbsp;BY 4.0 unless noted.</p>
+    <p><a href="https://opendata-rspb.opendata.arcgis.com" target="_blank" rel="noopener">Source catalogue ↗</a></p>
+  </div>
+</footer>
+
+<script src="datasets.js"></script>
+<script src="app.js"></script>
+<script type="module" src="map.js"></script>
+</body>
+</html>
